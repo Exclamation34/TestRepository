@@ -93,14 +93,12 @@
     let DPR=1, resizeRAF=0; const viewW=()=>Math.max(1, canvas.width/DPR); const viewH=()=>Math.max(1, canvas.height/DPR);
     function resizeInternal(){
       resizeRAF=0;
-      // Use visualViewport to size the play area correctly on iOS Safari,
-      // subtracting header/footer heights so the canvas is truly centered.
-      const vpW = Math.floor((window.visualViewport?.width) || window.innerWidth || document.documentElement.clientWidth || 1);
-      const vpH = Math.floor((window.visualViewport?.height) || window.innerHeight || document.documentElement.clientHeight || 1);
-      const headerH = Math.ceil(document.querySelector('header')?.getBoundingClientRect().height || 0);
-      const footerH = Math.ceil(document.querySelector('footer')?.getBoundingClientRect().height || 0);
-      const w = Math.max(1, vpW);
-      const h = Math.max(1, vpH - headerH - footerH);
+      // Use the actual layout box of the canvas container to avoid double-subtracting
+      // header/footer on iOS Safari in landscape.
+      const parent = canvas.parentElement || document.body;
+      const r = parent.getBoundingClientRect();
+      const w = Math.max(1, Math.floor(r.width));
+      const h = Math.max(1, Math.floor(r.height));
       const next = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
       if (w !== canvas.width / DPR || h !== canvas.height / DPR || next !== DPR) {
         DPR = next;

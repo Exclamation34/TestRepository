@@ -134,7 +134,7 @@
     const PLATFORM_WIDTH_RANGE=[120,180], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=140, WORLD_FLOOR=10000;
 
     // ---------- Entities ----------
-    let camX=0; const input={down:false,sx:0,sy:0,x:0,y:0};
+    let camX=0; const input={down:false,sx:0,sy:0,x:0,y:0}; let hasJumped=false;
     const frog={x:0,y:0,vx:0,vy:0,onGround:false};
     let platforms=[]; let score=0; let lastLandedX=0;
 
@@ -198,14 +198,14 @@
     function resetGame(){
       // Make sure we have the latest viewport (iOS can lag a frame when rotating/showing bars)
       try { resizeInternal(); } catch {}
-      camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true;
+      camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true; hasJumped=false;
       const H=Math.max(240, viewH());
       // Standard band for ongoing platforms
       const midY = Math.floor(H * 0.55);
       const minY = Math.max(160, midY - 120);
       const maxY = Math.min(H - 120, midY + 120);
       // Spawn the very first platform LOWER so the frog is clearly visible before first jump
-      const startY = Math.floor(H * 0.70);
+      const startY = Math.floor(H * 0.78);
       const startPlat={x:-120,y:clamp(startY,minY,maxY),w:300,h:16};
       platforms.push(startPlat);
       frog.x=0; frog.y=startPlat.y-FROG_RADIUS; lastLandedX=frog.x;
@@ -224,7 +224,7 @@
     // ---------- Camera ----------
     function camBias(){ return 120; }
     function lookAhead(){ return 160; }
-    const worldToScreen=(x,y)=>[x - camX + viewW()/2 - camBias(), y];
+    const worldToScreen=(x,y)=>[x - camX + viewW()/2 - camBias(), y + ((!hasJumped && state===State.PLAY) ? 28 : 0)];
 
     // ---------- Platforms ----------
     function ensurePlatformsAhead(){
@@ -402,7 +402,7 @@
     const pointerInFrog=(px,py)=>{ const [fx,fy]=worldToScreen(frog.x,frog.y); return Math.hypot(px-fx,py-fy) <= FROG_RADIUS+10; };
     function onDown(px,py){ if(!isLandscape()) return; if(state!==State.PLAY) return; if(!frog.onGround) return; if(!pointerInFrog(px,py)) return; input.down=true; input.sx=px; input.sy=py; input.x=px; input.y=py; }
     function onMove(px,py){ if(!input.down) return; input.x=px; input.y=py; }
-    function onUp(){ if(!input.down) return; const dx=input.x-input.sx, dy=input.y-input.sy; const vx=clamp(-dx*POWER_SCALE,-MAX_POWER,MAX_POWER), vy=clamp(-dy*POWER_SCALE,-MAX_POWER,MAX_POWER); if(Math.hypot(dx,dy)>6){ frog.vx=vx; frog.vy=vy; frog.onGround=false; } input.down=false; }
+    function onUp(){ if(!input.down) return; const dx=input.x-input.sx, dy=input.y-input.sy; const vx=clamp(-dx*POWER_SCALE,-MAX_POWER,MAX_POWER), vy=clamp(-dy*POWER_SCALE,-MAX_POWER,MAX_POWER); if(Math.hypot(dx,dy)>6){ frog.vx=vx; frog.vy=vy; frog.onGround=false; hasJumped=true; } input.down=false; }
     canvas.addEventListener('mousedown', e=>onDown(e.offsetX,e.offsetY)); canvas.addEventListener('mousemove', e=>onMove(e.offsetX,e.offsetY)); window.addEventListener('mouseup', onUp);
     canvas.addEventListener('touchstart', e=>{ const t=e.changedTouches[0]; const r=canvas.getBoundingClientRect(); onDown(t.clientX-r.left, t.clientY-r.top); e.preventDefault(); }, {passive:false});
     canvas.addEventListener('touchmove', e=>{ const t=e.changedTouches[0]; const r=canvas.getBoundingClientRect(); onMove(t.clientX-r.left, t.clientY-r.top); e.preventDefault(); }, {passive:false});
@@ -451,5 +451,3 @@
   </script>
 </body>
 </html>
-
-

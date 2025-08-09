@@ -344,7 +344,8 @@
         const scale = h / bgImg.height; const tileW = Math.max(1, Math.floor(bgImg.width * scale));
         const offset = ((-bgParallaxX) % tileW + tileW) % tileW;
         const startX = -tileW + offset;
-        for(let x=startX; x<w+tileW; x+=tileW){ ctx.drawImage(bgImg, x, -8, tileW, h+16); }
+        // Overdraw vertically to avoid 1px gaps from DPR rounding on iOS
+        for(let x=startX; x<w+tileW; x+=tileW){ ctx.drawImage(bgImg, x, -24, tileW, h+48); }
       } else {
         const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0f1e33'); g.addColorStop(1,'#0a121e'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
       }

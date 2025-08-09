@@ -196,12 +196,17 @@
 
     // ---------- Reset / start ----------
     function resetGame(){
+      // Make sure we have the latest viewport (iOS can lag a frame when rotating/showing bars)
+      try { resizeInternal(); } catch {}
       camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true;
       const H=Math.max(240, viewH());
+      // Standard band for ongoing platforms
       const midY = Math.floor(H * 0.55);
       const minY = Math.max(160, midY - 120);
       const maxY = Math.min(H - 120, midY + 120);
-      const startPlat={x:-120,y:clamp(midY,minY,maxY),w:300,h:16};
+      // Spawn the very first platform LOWER so the frog is clearly visible before first jump
+      const startY = Math.floor(H * 0.70);
+      const startPlat={x:-120,y:clamp(startY,minY,maxY),w:300,h:16};
       platforms.push(startPlat);
       frog.x=0; frog.y=startPlat.y-FROG_RADIUS; lastLandedX=frog.x;
       camX = frog.x - lookAhead();
@@ -446,4 +451,5 @@
   </script>
 </body>
 </html>
+
 

@@ -208,7 +208,7 @@
       const minY = Math.max(160, midY - 120);
       const maxY = Math.min(H - 120, midY + 120);
       // Spawn the very first platform LOWER so the frog is clearly visible before first jump
-      const startY = Math.floor(H * 0.72);
+      const startY = Math.floor(H * 0.86);
       const startPlat={x:-120,y:clamp(startY,minY,maxY),w:300,h:16};
       platforms.push(startPlat);
       frog.x=0; frog.y=startPlat.y-FROG_RADIUS; lastLandedX=frog.x;

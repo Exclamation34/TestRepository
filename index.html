@@ -13,7 +13,8 @@
     header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; color: #b7d6ff; }
     header .pill { font-size: 12px; padding: 6px 10px; border-radius: 999px; background: #1a2440; color: #a5c1ff; border: 1px solid #23315b; }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; background: #0a121e; }
-    #stage { position: relative; height: calc(100svh - var(--hf, 0px)); }
+    /* Use JS-driven visual viewport height to avoid iOS bar show/hide gaps */
+    #stage { position: relative; height: calc(var(--vh, 100vh) - var(--hf, 0px)); }
     footer { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) 12px; background: #11182a; border-top: 1px solid #1c2742; font-size: 12px; }
     .hud { position: absolute; left: 12px; top: calc(56px + env(safe-area-inset-top)); background: rgba(0,0,0,.35); padding: 10px 12px; border-radius: 12px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.08); font-size: 14px; }
     .hud div { line-height: 1.2; }
@@ -97,6 +98,9 @@
     let DPR=1, resizeRAF=0; const viewW=()=>Math.max(1, canvas.width/DPR); const viewH=()=>Math.max(1, canvas.height/DPR);
     function resizeInternal(){
       resizeRAF=0;
+      // Keep CSS in sync with *actual* visible viewport to avoid bottom gap when Safari bars hide
+      const vvh = Math.floor((window.visualViewport?.height) || window.innerHeight || document.documentElement.clientHeight || 0);
+      if (vvh) document.documentElement.style.setProperty('--vh', vvh + 'px');
       const header = document.querySelector('header');
       const footer = document.querySelector('footer');
       const headerH = Math.ceil(header?.getBoundingClientRect().height || 0);

@@ -197,14 +197,20 @@
     // ---------- Reset / start ----------
     function resetGame(){
       camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true;
-      const H=Math.max(240,viewH());
-      const midY=H*0.55; const minY=Math.max(160,midY-120); const maxY=Math.min(H-120,midY+120);
-      const startPlat={x:-120,y:clamp(midY,minY,maxY),w:300,h:16};
+      const H=Math.max(240, viewH());
+      // Keep platforms in a lower band so the frog isn't glued to the top on iPhone
+      let bandTop = Math.floor(H * 0.58);
+      let bandBottom = Math.floor(H * 0.82);
+      if (bandBottom - bandTop < 120) { // guarantee usable band height
+        bandTop = Math.max(80, Math.floor(H*0.5) - 60);
+        bandBottom = Math.min(H - 60, bandTop + 120);
+      }
+      const startPlat={x:-120,y:Math.floor((bandTop+bandBottom)/2),w:300,h:16};
       platforms.push(startPlat);
       frog.x=0; frog.y=startPlat.y-FROG_RADIUS; lastLandedX=frog.x;
       let px=startPlat.x+startPlat.w+rand(120,180), py=startPlat.y;
       for(let i=0;i<16;i++){
-        py=clamp(py+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT),minY,maxY);
+        py=clamp(py+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT),bandTop,bandBottom);
         const w=rand(...PLATFORM_WIDTH_RANGE);
         platforms.push({x:px,y:py,w,h:14});
         px+=w+rand(...PLATFORM_GAP_RANGE);
@@ -224,7 +230,11 @@
       while(maxX<rightEdge){
         const last=platforms[platforms.length-1];
         const w=rand(...PLATFORM_WIDTH_RANGE);
-        const y=clamp(last.y+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT),110,460);
+        // Recompute the vertical band each time in case the viewport changed (iOS chrome show/hide)
+        const H=viewH();
+        let bandTop=Math.floor(H*0.58), bandBottom=Math.floor(H*0.82);
+        if (bandBottom - bandTop < 120){ bandTop=Math.max(80, Math.floor(H*0.5)-60); bandBottom=Math.min(H-60, bandTop+120); }
+        const y=clamp(last.y+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT), bandTop, bandBottom);
         const x=last.x+last.w+rand(...PLATFORM_GAP_RANGE);
         platforms.push({x,y,w,h:14});
         maxX=x+w;

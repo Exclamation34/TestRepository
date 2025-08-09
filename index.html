@@ -139,6 +139,7 @@
     // If player taps Play while the phone is still in portrait, defer starting
     let pendingStart=false;
     const G=1800, MAX_POWER=1400, POWER_SCALE=4, FROG_RADIUS=24; // slightly larger for art
+    const FROG_SINK = 3; // small visual sink so frog sits on the grass cap
     const PLATFORM_WIDTH_RANGE=[120,180], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=140, WORLD_FLOOR=10000;
 
     // ---------- Entities ----------
@@ -210,14 +211,14 @@
       camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true; 
       const H=Math.max(240, viewH());
       // Standard band for ongoing platforms
-      const midY = Math.floor(H * 0.55);
+      const midY = Math.floor(H * 0.68);
       const minY = Math.max(160, midY - 120);
       const maxY = Math.min(H - 120, midY + 120);
       // Spawn the very first platform LOWER so the frog is clearly visible before first jump
       const startY = Math.floor(H * 0.86);
-      const startPlat={x:-120,y:clamp(startY,minY,maxY),w:300,h:16};
+      const START_W = 320; const startPlat={x:-START_W/2,y:clamp(startY,minY,maxY),w:START_W,h:16};
       platforms.push(startPlat);
-      frog.x=0; frog.y=startPlat.y-FROG_RADIUS; lastLandedX=frog.x;
+      frog.x=0; frog.y=startPlat.y - FROG_RADIUS + FROG_SINK; lastLandedX=frog.x;
       camX = frog.x - lookAhead();
       let px=startPlat.x+startPlat.w+rand(120,180), py=startPlat.y;
       for(let i=0;i<16;i++){
@@ -250,7 +251,7 @@
         const w=rand(...PLATFORM_WIDTH_RANGE);
         // Recompute the vertical band each time in case the viewport changed (iOS chrome show/hide)
         const H=viewH();
-        const midY = Math.floor(H * 0.55);
+        const midY = Math.floor(H * 0.68);
         const minY = Math.max(160, midY - 120);
         const maxY = Math.min(H - 120, midY + 120);
         const y=clamp(last.y+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT), minY, maxY);
@@ -298,7 +299,7 @@
         for(const p of platforms){
           const top=p.y; const withinX=frog.x>p.x-FROG_RADIUS && frog.x<p.x+p.w+FROG_RADIUS; const crossing=ftPrev<=top && fb>=top;
           if(withinX && crossing){
-            frog.y=top-FROG_RADIUS; frog.vy=0; frog.onGround=true;
+            frog.y=top - FROG_RADIUS + FROG_SINK; frog.vy=0; frog.onGround=true;
             const dx=Math.max(0, frog.x - lastLandedX); score += Math.floor(dx / 10); lastLandedX=frog.x; document.getElementById('score').textContent=String(score);
             landHoldUntil = performance.now() + 160;
             break;

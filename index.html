@@ -13,7 +13,7 @@
     header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; color: #b7d6ff; }
     header .pill { font-size: 12px; padding: 6px 10px; border-radius: 999px; background: #1a2440; color: #a5c1ff; border: 1px solid #23315b; }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; background: #0a121e; }
-    #stage { position: relative; height: calc(100dvh - var(--hf, 0px)); }
+    #stage { position: relative; height: calc(100svh - var(--hf, 0px)); }
     footer { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) 12px; background: #11182a; border-top: 1px solid #1c2742; font-size: 12px; }
     .hud { position: absolute; left: 12px; top: calc(56px + env(safe-area-inset-top)); background: rgba(0,0,0,.35); padding: 10px 12px; border-radius: 12px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.08); font-size: 14px; }
     .hud div { line-height: 1.2; }
@@ -89,6 +89,9 @@
   (() => {
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
+    // Force a first-time sizing before anything renders so the canvas does not cover the footer
+    // and the start camera/platforms use the correct height.
+    try { resizeInternal(); } catch {}
 
     // ---------- Resize (debounced) + iOS viewport quirks ----------
     let DPR=1, resizeRAF=0; const viewW=()=>Math.max(1, canvas.width/DPR); const viewH=()=>Math.max(1, canvas.height/DPR);
@@ -449,6 +452,7 @@
 
     // ---------- Boot ----------
     scheduleResize();
+    window.addEventListener('load', resizeInternal);
     Promise.all([loadBackground(), loadFrames()]).then(()=>{ runSanityTests(); showMenu(); requestAnimationFrame(frame); });
   })();
   </script>

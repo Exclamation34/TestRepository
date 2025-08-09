@@ -136,6 +136,8 @@
 
     // ---------- Game constants ----------
     const State={ MENU:'MENU', PLAY:'PLAY', OVER:'OVER', SCORES:'SCORES' }; let state=State.MENU;
+    // If player taps Play while the phone is still in portrait, defer starting
+    let pendingStart=false;
     const G=1800, MAX_POWER=1400, POWER_SCALE=4, FROG_RADIUS=24; // slightly larger for art
     const PLATFORM_WIDTH_RANGE=[120,180], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=140, WORLD_FLOOR=10000;
 
@@ -158,6 +160,7 @@
     function setStatus(msg, error){ statusEl.textContent = msg; statusEl.classList.toggle('error', !!error); }
 
     function showMenu(){
+      pendingStart=false;
       state=State.MENU; overlay.hidden=false; overlayCard.innerHTML=`
       <div class="title">🐸 Frog Jumper</div>
       <div class="subtitle">Drag to aim · Release to jump</div>
@@ -225,7 +228,14 @@
       }
       overlay.hidden=true; document.getElementById('score').textContent='0'; document.getElementById('best').textContent=bestScore();
     }
-    function startGame(){ resetGame(); state=State.PLAY; }
+    function startGame(){
+      // If not landscape yet, defer start until orientation changes
+      if(!isLandscape()){
+        pendingStart=true; overlay.hidden=true; updateRotateUI();
+        return;
+      }
+      resetGame(); state=State.PLAY;
+    }
 
     // ---------- Camera ----------
     function camBias(){ return 120; }
@@ -418,8 +428,15 @@
 
     // ---------- Loop ----------
     let last=performance.now();
+    // Also resume deferred start on any viewport change
+    window.addEventListener('orientationchange', ()=>{ if(pendingStart && isLandscape()){ resetGame(); state=State.PLAY; pendingStart=false; } });
+    visualViewport?.addEventListener('resize', ()=>{ if(pendingStart && isLandscape()){ resetGame(); state=State.PLAY; pendingStart=false; } });
     function frame(t){
       const dt=Math.min((t-last)/1000,1/30); last=t;
+      // If user hit Play in portrait, start as soon as we become landscape
+      if(pendingStart && isLandscape()){
+        resetGame(); state=State.PLAY; pendingStart=false;
+      }
       // Block gameplay in portrait; show rotate overlay
       if(!isLandscape()){
         updateRotateUI();

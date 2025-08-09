@@ -140,7 +140,7 @@
     let pendingStart=false;
     const G=1800, MAX_POWER=1400, POWER_SCALE=4, FROG_RADIUS=24; // slightly larger for art
     const FROG_SINK = 3; // small visual sink so frog sits on the grass cap
-    const PLATFORM_WIDTH_RANGE=[120,180], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=140, WORLD_FLOOR=10000;
+    const PLATFORM_WIDTH_RANGE=[90,140], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=140, WORLD_FLOOR=10000;
 
     // ---------- Entities ----------
     let camX=0; const input={down:false,sx:0,sy:0,x:0,y:0};
@@ -211,12 +211,12 @@
       camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true; 
       const H=Math.max(240, viewH());
       // Standard band for ongoing platforms
-      const midY = Math.floor(H * 0.68);
+      const midY = Math.floor(H * 0.58);
       const minY = Math.max(160, midY - 120);
       const maxY = Math.min(H - 120, midY + 120);
       // Spawn the very first platform LOWER so the frog is clearly visible before first jump
-      const startY = Math.floor(H * 0.86);
-      const START_W = 320; const startPlat={x:-START_W/2,y:clamp(startY,minY,maxY),w:START_W,h:16};
+      const startY = Math.floor(H * 0.62);
+      const START_W = 220; const startPlat={x:-START_W/2,y:clamp(startY,minY,maxY),w:START_W,h:16};
       platforms.push(startPlat);
       frog.x=0; frog.y=startPlat.y - FROG_RADIUS + FROG_SINK; lastLandedX=frog.x;
       camX = frog.x - lookAhead();
@@ -251,7 +251,7 @@
         const w=rand(...PLATFORM_WIDTH_RANGE);
         // Recompute the vertical band each time in case the viewport changed (iOS chrome show/hide)
         const H=viewH();
-        const midY = Math.floor(H * 0.68);
+        const midY = Math.floor(H * 0.58);
         const minY = Math.max(160, midY - 120);
         const maxY = Math.min(H - 120, midY + 120);
         const y=clamp(last.y+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT), minY, maxY);
@@ -344,7 +344,7 @@
         const scale = h / bgImg.height; const tileW = Math.max(1, Math.floor(bgImg.width * scale));
         const offset = ((-bgParallaxX) % tileW + tileW) % tileW;
         const startX = -tileW + offset;
-        for(let x=startX; x<w+tileW; x+=tileW){ ctx.drawImage(bgImg, x, 0, tileW, h); }
+        for(let x=startX; x<w+tileW; x+=tileW){ ctx.drawImage(bgImg, x, -8, tileW, h+16); }
       } else {
         const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0f1e33'); g.addColorStop(1,'#0a121e'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
       }

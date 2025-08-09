@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+if(frog.y - FROG_RADIUS > WORLD_FLOOR || frog.y - FROG_RADIUS > vH()+200){ showOver(); }<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -95,6 +95,10 @@
     try { resizeInternal(); } catch {}
 
     // ---------- Resize (debounced) + iOS viewport quirks ----------
+    // Logical viewport to normalize playfield across devices
+    const VREF = { w: 800, h: 420 }; // reference logical size (landscape)
+    let V = { s: 1, ox: 0, oy: 0, w: VREF.w, h: VREF.h }; // scale, offsets, logical w/h
+    const vW = () => V.w; const vH = () => V.h; // logical dimensions
     let DPR=1, resizeRAF=0; const viewW=()=>Math.max(1, canvas.width/DPR); const viewH=()=>Math.max(1, canvas.height/DPR);
     function resizeInternal(){
       resizeRAF=0;
@@ -105,7 +109,7 @@
       const footer = document.querySelector('footer');
       const headerH = Math.ceil(header?.getBoundingClientRect().height || 0);
       const footerH = Math.ceil(footer?.getBoundingClientRect().height || 0);
-      // expose to CSS so #stage can use 100dvh - (header+footer)
+      // expose to CSS so #stage can use visible height - (header+footer)
       document.documentElement.style.setProperty('--hf', `${headerH + footerH}px`);
       const parent = document.getElementById('stage') || canvas.parentElement || document.body;
       const r = parent.getBoundingClientRect();
@@ -118,6 +122,9 @@
         canvas.height = Math.floor(h * DPR);
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       }
+      // Compute uniform scale to fit our logical playfield, centered
+      const s = Math.min(w / VREF.w, h / VREF.h);
+      V = { s, ox: (w - VREF.w * s) * 0.5, oy: (h - VREF.h * s) * 0.5, w: VREF.w, h: VREF.h };
     }
     const scheduleResize = () => { if (!resizeRAF) resizeRAF = requestAnimationFrame(resizeInternal); };
     new ResizeObserver(scheduleResize).observe(canvas.parentElement||canvas); window.addEventListener('resize',scheduleResize);
@@ -137,6 +144,8 @@
 
     // ---------- Utils ----------
     const rand=(a,b)=>a+Math.random()*(b-a); const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    const pickWidth=()=> (Math.random()<0.5? rand(70,110) : rand(150,220));
+    const platY=(p)=> p.y + (score>=SCORE_OSC_START ? Math.sin(elapsed*p.oscSpeed + p.oscPhase) * p.oscAmp : 0);
 
     // ---------- Game constants ----------
     const State={ MENU:'MENU', PLAY:'PLAY', OVER:'OVER', SCORES:'SCORES' }; let state=State.MENU;
@@ -144,10 +153,12 @@
     let pendingStart=false;
     const G=1800, MAX_POWER=1400, POWER_SCALE=4, FROG_RADIUS=24; // slightly larger for art
     const FROG_SINK = 3; // small visual sink so frog sits on the grass cap
-    const PLATFORM_WIDTH_RANGE=[90,140], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=140, WORLD_FLOOR=10000;
+    const PLATFORM_WIDTH_RANGE=[70,220], PLATFORM_GAP_RANGE=[140,280], PLATFORM_Y_DRIFT=170, WORLD_FLOOR=10000;
+    const SCORE_OSC_START = 500; // after this score, pillars begin to oscillate vertically
 
     // ---------- Entities ----------
     let camX=0; const input={down:false,sx:0,sy:0,x:0,y:0};
+    let elapsed=0;
     const frog={x:0,y:0,vx:0,vy:0,onGround:false};
     let platforms=[]; let score=0; let lastLandedX=0;
 
@@ -213,22 +224,22 @@
       // Make sure we have the latest viewport (iOS can lag a frame when rotating/showing bars)
       try { resizeInternal(); } catch {}
       camX=0; score=0; platforms=[]; frog.vx=frog.vy=0; frog.onGround=true; 
-      const H=Math.max(240, viewH());
+      const H=Math.max(240, vH());
       // Standard band for ongoing platforms
       const midY = Math.floor(H * 0.58);
       const minY = Math.max(160, midY - 120);
       const maxY = Math.min(H - 120, midY + 120);
       // Spawn the very first platform LOWER so the frog is clearly visible before first jump
       const startY = Math.floor(H * 0.62);
-      const START_W = 220; const startPlat={x:-START_W/2,y:clamp(startY,minY,maxY),w:START_W,h:16};
+      const START_W = 220; const startPlat={x:-START_W/2,y:clamp(startY,minY,maxY),w:START_W,h:16, oscAmp: rand(12,24), oscSpeed: rand(0.6,1.2), oscPhase: rand(0,Math.PI*2)};
       platforms.push(startPlat);
       frog.x=0; frog.y=startPlat.y - FROG_RADIUS + FROG_SINK; lastLandedX=frog.x;
       camX = frog.x - lookAhead();
       let px=startPlat.x+startPlat.w+rand(120,180), py=startPlat.y;
       for(let i=0;i<16;i++){
         py=clamp(py+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT),minY,maxY);
-        const w=rand(...PLATFORM_WIDTH_RANGE);
-        platforms.push({x:px,y:py,w,h:14});
+        const w=pickWidth();
+        platforms.push({x:px,y:py,w,h:14, oscAmp: rand(12,24), oscSpeed: rand(0.6,1.2), oscPhase: rand(0,Math.PI*2)});
         px+=w+rand(...PLATFORM_GAP_RANGE);
       }
       overlay.hidden=true; document.getElementById('score').textContent='0'; document.getElementById('best').textContent=bestScore();
@@ -243,27 +254,27 @@
     }
 
     // ---------- Camera ----------
-    function camBias(){ return 120; }
-    function lookAhead(){ return 160; }
-    const worldToScreen=(x,y)=>[x - camX + viewW()/2 - camBias(), y];
+    function camBias(){ return 120; } // logical units
+    function lookAhead(){ return 160; } // logical units
+    const worldToScreen=(x,y)=>[ ( (x - camX) + (vW()/2 - camBias()) ) * V.s + V.ox, (y) * V.s + V.oy ];
 
     // ---------- Platforms ----------
     function ensurePlatformsAhead(){
-      const rightEdge=camX+viewW()+400; let maxX=-Infinity; for(const p of platforms) maxX=Math.max(maxX,p.x+p.w);
+      const rightEdge=camX+vW()+400; let maxX=-Infinity; for(const p of platforms) maxX=Math.max(maxX,p.x+p.w);
       while(maxX<rightEdge){
         const last=platforms[platforms.length-1];
-        const w=rand(...PLATFORM_WIDTH_RANGE);
+        const w=pickWidth();
         // Recompute the vertical band each time in case the viewport changed (iOS chrome show/hide)
-        const H=viewH();
+        const H=vH();
         const midY = Math.floor(H * 0.58);
         const minY = Math.max(160, midY - 120);
         const maxY = Math.min(H - 120, midY + 120);
         const y=clamp(last.y+rand(-PLATFORM_Y_DRIFT,PLATFORM_Y_DRIFT), minY, maxY);
         const x=last.x+last.w+rand(...PLATFORM_GAP_RANGE);
-        platforms.push({x,y,w,h:14});
+        platforms.push({x,y,w,h:14, oscAmp: rand(12,24), oscSpeed: rand(0.6,1.2), oscPhase: rand(0,Math.PI*2)});
         maxX=x+w;
       }
-      const leftCull=camX-viewW()-300; if(platforms.length>40) platforms=platforms.filter(p=>p.x+p.w>leftCull);
+      const leftCull=camX-vW()-300; if(platforms.length>40) platforms=platforms.filter(p=>p.x+p.w>leftCull);
     }
 
     // ---------- Physics ----------
@@ -280,7 +291,7 @@
       if(!frog.onGround){
         const r = FROG_RADIUS;
         for(const p of platforms){
-          const rx = p.x, ry = p.y, rw = p.w, rh = WORLD_FLOOR;
+          const rx = p.x, ry = platY(p), rw = p.w, rh = WORLD_FLOOR;
           if(frog.x + r < rx-2 || frog.x - r > rx+rw+2) continue;
           if(frog.y + r < ry-2) continue;
           const nx = Math.max(rx, Math.min(frog.x, rx+rw));
@@ -301,7 +312,7 @@
       if(frog.vy>0){
         const fb=frog.y+FROG_RADIUS; const ftPrev=fb - frog.vy*dt;
         for(const p of platforms){
-          const top=p.y; const withinX=frog.x>p.x-FROG_RADIUS && frog.x<p.x+p.w+FROG_RADIUS; const crossing=ftPrev<=top && fb>=top;
+          const top=platY(p); const withinX=frog.x>p.x-FROG_RADIUS && frog.x<p.x+p.w+FROG_RADIUS; const crossing=ftPrev<=top && fb>=top;
           if(withinX && crossing){
             frog.y=top - FROG_RADIUS + FROG_SINK; frog.vy=0; frog.onGround=true;
             const dx=Math.max(0, frog.x - lastLandedX); score += Math.floor(dx / 10); lastLandedX=frog.x; document.getElementById('score').textContent=String(score);
@@ -356,13 +367,13 @@
     }
 
     function drawPlatforms(){
-      const h=viewH();
+      const screenBottom = V.oy + V.h * V.s;
       for(const p of platforms){
-        const [sx,sy]=worldToScreen(p.x,p.y);
-        ctx.fillStyle='#6b4423'; ctx.fillRect(Math.round(sx), Math.round(sy), Math.round(p.w), Math.round(h - sy));
-        ctx.globalAlpha=0.18; for(let i=1;i<=3;i++){ ctx.fillRect(Math.round(sx + (i*p.w/4)), Math.round(sy)+6, 2, Math.round(h-sy)); } ctx.globalAlpha=1;
-        ctx.fillStyle='#397b2e'; ctx.fillRect(Math.round(sx)-1, Math.round(sy)-6, Math.round(p.w)+2, 8);
-        ctx.fillStyle='#2b5e23'; ctx.fillRect(Math.round(sx), Math.round(sy), Math.round(p.w), 14);
+        const [sx,sy]=worldToScreen(p.x, platY(p));
+        ctx.fillStyle='#6b4423'; ctx.fillRect(Math.round(sx), Math.round(sy), Math.round(p.w * V.s), Math.round(screenBottom - sy));
+        ctx.globalAlpha=0.18; for(let i=1;i<=3;i++){ ctx.fillRect(Math.round(sx + (i*p.w/4)*V.s), Math.round(sy)+6, 2, Math.round(screenBottom - sy)); } ctx.globalAlpha=1;
+        ctx.fillStyle='#397b2e'; ctx.fillRect(Math.round(sx)-1, Math.round(sy)-6, Math.round(p.w*V.s)+2, 8);
+        ctx.fillStyle='#2b5e23'; ctx.fillRect(Math.round(sx), Math.round(sy), Math.round(p.w*V.s), 14);
       }
     }
 
@@ -372,7 +383,7 @@
       let shadow = null; let closestDy = Infinity;
       for(const p of platforms){
         if(frog.x >= p.x-6 && frog.x <= p.x+p.w+6){
-          const dyTop = p.y - (frog.y + FROG_RADIUS);
+          const dyTop = platY(p) - (frog.y + FROG_RADIUS);
           if(dyTop >= -2 && dyTop < closestDy && dyTop < 180){ closestDy = dyTop; shadow = p; }
         }
       }
@@ -438,7 +449,7 @@
     window.addEventListener('orientationchange', ()=>{ if(pendingStart && isLandscape()){ resetGame(); state=State.PLAY; pendingStart=false; } });
     visualViewport?.addEventListener('resize', ()=>{ if(pendingStart && isLandscape()){ resetGame(); state=State.PLAY; pendingStart=false; } });
     function frame(t){
-      const dt=Math.min((t-last)/1000,1/30); last=t;
+      const dt=Math.min((t-last)/1000,1/30); last=t; elapsed += dt;
       // If user hit Play in portrait, start as soon as we become landscape
       if(pendingStart && isLandscape()){
         resetGame(); state=State.PLAY; pendingStart=false;
